@@ -32,7 +32,8 @@ function newGame(name){
     seen: [],
     dayLog: [],
     flow: null,
-    ui: { view:"day" },
+    settings: { coached: true },
+    ui: { view:"day", hb:"job" },
     meta: { created: Date.now(), updated: Date.now() }
   };
 }
@@ -75,7 +76,7 @@ async function loadGame(){
 }
 function migrate(p){
   const base = newGame(p.player && p.player.name);
-  return Object.assign(base, p, { ui: Object.assign({view:"day"}, p.ui||{}) });
+  return Object.assign(base, p, { settings: Object.assign({coached:true}, p.settings||{}), ui: Object.assign({view:"day", hb:"job"}, p.ui||{}) });
 }
 
 /* ---------------- progression ---------------- */

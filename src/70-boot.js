@@ -36,7 +36,7 @@ async function doSubmitTask(){
   if (!r) { render(); return; }
   if (r.refused) { LAST_RESULT = r; S.flow.phase = "taskReview"; render(); return; }
 
-  if (S.flow.hintPenalty) {
+  if (S.flow.hintPenalty && !coached()) {
     r.dims.technical = Math.min(r.dims.technical, 4);
     r.dims.judgement = Math.min(r.dims.judgement, 4);
     r.notes = (r.notes||[]).concat(["You took a hint on this one, so technical accuracy and judgement are capped at 4. Worth it if it taught you something; expensive if it was impatience."]);
@@ -85,7 +85,7 @@ function showHint(){
   const used = S.flow.hintCount || 0;
   S.flow.hintShown = pool[Math.min(used, pool.length-1)];
   S.flow.hintCount = used + 1;
-  S.flow.hintPenalty = true;
+  S.flow.hintPenalty = !coached();
   render();
 }
 
@@ -111,6 +111,8 @@ document.addEventListener("click", e => {
   if (act === "submitTask")   { doSubmitTask(); return; }
   if (act === "skipAi")       { if (BUSY) BUSY.ctl.abort(); return; }
   if (act === "hint")         { showHint(); return; }
+  if (act === "hb")           { S.ui.hb = b.dataset.v; render(); return; }
+  if (act === "coach")        { S.settings.coached = b.dataset.v === "1"; render(); saveGame(); return; }
   if (act === "chip") {
     const spec = specForCurrent();
     setAnswer(spec, b.dataset.fid, getAnswer(spec, b.dataset.fid) === b.dataset.v ? "" : b.dataset.v);
@@ -160,6 +162,12 @@ document.addEventListener("input", e => {
   if (f === "triageJustify") { S.flow.triageJustify = e.target.value; return; }
   if (f === "ans") { setAnswer(specForCurrent(), e.target.dataset.fid, e.target.value); return; }
 });
+document.addEventListener("toggle", e => {
+  const k = e.target.dataset ? e.target.dataset.keep : null;
+  if (k === "terms")  S.ui.termsOpen  = e.target.open;
+  if (k === "recipe") S.ui.recipeOpen = e.target.open;
+}, true);
+
 document.addEventListener("change", e => {
   const f = e.target.dataset ? e.target.dataset.field : null;
   if (f === "ans") setAnswer(specForCurrent(), e.target.dataset.fid, e.target.value);

@@ -64,7 +64,7 @@ function renderRail(){
     <div>
       <div class="railhead"><span>Elsewhere</span></div>
       <div class="navlist">
-        ${[["day","Today"],["register","Risk register"],["company","The company"],["record","My record"],["save","Save & settings"]]
+        ${[["day","Today"],["handbook","The handbook"],["register","Risk register"],["company","The company"],["record","My record"],["save","Save & settings"]]
           .map(([v,l]) => `<button class="navbtn" data-act="view" data-v="${v}" aria-current="${S.ui.view===v}">${l}</button>`).join("")}
       </div>
     </div>
@@ -78,6 +78,7 @@ function renderRail(){
 
 /* ---------------- main router ---------------- */
 function renderMain(){
+  if (S.ui.view === "handbook") return viewHandbook();
   if (S.ui.view === "register") return viewRegister();
   if (S.ui.view === "company")  return viewCompany();
   if (S.ui.view === "record")   return viewRecord();
@@ -106,7 +107,9 @@ function viewOnboard(){
     <label class="field"><span class="lb">Your name<span class="hint">this is who the NPCs will address</span></span>
       <input type="text" id="pname" data-field="pname" value="${esc(S.player.name)}" maxlength="42"></label>
     <div class="row"><button class="btn primary" data-act="begin">Start day one</button>
-      <button class="btn" data-act="view" data-v="save">I have a save to import</button></div>
+      <button class="btn" data-act="view" data-v="handbook">Read the handbook first</button>
+      <button class="btn ghost" data-act="view" data-v="save">Import a save</button></div>
+    <div class="callout"><span class="ch">New to GRC?</span>Start with <strong>The handbook</strong>. It explains what the job actually is, which parts of Information Governance already transfer, every term this simulator uses, and a full worked example of a risk write-up built step by step. Coached mode is on by default — it puts the glossary and the method inside each task.</div>
     <hr class="rule">
     ${howToPlay()}
   </div>`;
@@ -119,6 +122,7 @@ function howToPlay(){
       <dt>The loop</dt><dd>Each session is one working day: a morning briefing and inbox, a graded triage call, two pieces of real work, then your manager's debrief.</dd>
       <dt>Triage</dt><dd>Put the inbox in the order you would actually work it and say why. The order matters less than the reasoning — and the most important thing in the list is rarely the loudest.</dd>
       <dt>The work</dt><dd>Every task hands you a real artefact: a thread, a returned questionnaire, a certificate, a live incident. Read it properly. Flaws are planted, never flagged — finding them is the exercise.</dd>
+      <dt>Coached mode</dt><dd>On by default. Each task carries a glossary of its terms, the method for building the answer, and a note under every field. It never reveals the planted flaw. Switch it off in Save &amp; settings when you no longer need it.</dd>
       <dt>Grading</dt><dd>Four dimensions, 0–5: technical accuracy, judgement, communication, professional craft. A 3 is a competent professional job. A 5 is rare. Asking for the answer without attempting it gets you a hint and nothing else.</dd>
       <dt>Integrity</dt><dd>One stat is not recoverable by being clever. Advising the company to conceal a reportable matter, fabricate evidence or mislead an auditor ends badly, immediately.</dd>
       <dt>Saving</dt><dd>Progress saves automatically where storage is available, and there is always an export/import you can paste somewhere safe.</dd>
@@ -206,12 +210,13 @@ function viewTask(){
     ${spec.render()}
     <div class="card pad stack">
       <div><span class="eyebrow">Your work</span></div>
+      ${coached() ? termsPanel(spec) + recipePanel(spec) : ""}
       ${spec.fields.map(f => renderField(spec, f)).join("")}
       ${spec.type === "risk" ? riskCriteriaPanel() : ""}
       ${spec.type === "incidentBeat" && spec.sevOptions ? sevPanel() : ""}
       ${busyRow("Your work is being marked")}
       <div class="row"><button class="btn primary" data-act="submitTask" ${BUSY?"disabled":""}>Submit</button>
-        <button class="btn ghost" data-act="hint">I'm stuck — one hint <span class="tiny muted">(caps this task at 4)</span></button></div>
+        <button class="btn ghost" data-act="hint">I'm stuck — one hint${coached()?"":` <span class="tiny muted">(caps this task at 4)</span>`}</button></div>
       ${S.flow.hintShown ? `<div class="callout amberc"><span class="ch">Hint</span>${esc(S.flow.hintShown)}</div>` : ""}
     </div>`;
 }
@@ -222,13 +227,14 @@ function renderField(spec, f){
   const v = getAnswer(spec, f.id) || "";
   const id = "f_" + spec.scenarioId + "_" + spec.beatId + "_" + f.id;
   const lb = `<span class="lb">${esc(f.label)}${f.hint?`<span class="hint">${esc(f.hint)}</span>`:""}</span>`;
+  const cc = coached() && FIELD_COACH[f.id] ? `<div class="coachline">${FIELD_COACH[f.id]}</div>` : "";
   if (f.kind === "textarea")
-    return `<label class="field">${lb}<textarea id="${id}" data-field="ans" data-fid="${f.id}" rows="${f.rows||5}" placeholder="${esc(f.placeholder||"")}">${esc(v)}</textarea></label>`;
+    return `<label class="field">${lb}${cc}<textarea id="${id}" data-field="ans" data-fid="${f.id}" rows="${f.rows||5}" placeholder="${esc(f.placeholder||"")}">${esc(v)}</textarea></label>`;
   if (f.kind === "select")
-    return `<label class="field">${lb}<select id="${id}" data-field="ans" data-fid="${f.id}">${
+    return `<label class="field">${lb}${cc}<select id="${id}" data-field="ans" data-fid="${f.id}">${
       f.options.map(o => `<option${o===v?" selected":""}>${esc(o)}</option>`).join("")}</select></label>`;
   if (f.kind === "chips")
-    return `<div class="field">${lb}<div class="chips">${
+    return `<div class="field">${lb}${cc}<div class="chips">${
       f.options.map(o => `<button class="chip" data-act="chip" data-fid="${f.id}" data-v="${esc(o)}" aria-pressed="${o===v}">${esc(o)}</button>`).join("")}</div></div>`;
   return `<label class="field">${lb}<input type="text" id="${id}" data-field="ans" data-fid="${f.id}" value="${esc(v)}"></label>`;
 }
@@ -415,6 +421,14 @@ function viewSave(){
   return `<div class="card pad stack">
       <div><span class="eyebrow">Save & settings</span><h1 style="font-size:23px;margin-top:5px">Your career, as text</h1></div>
       <p class="muted tiny">Status: <strong>${esc(saveStatus)}</strong>. Progress is written automatically at the end of every graded piece of work. Copy the export somewhere safe if you want a career you cannot lose.</p>
+      <hr class="rule">
+      <div><span class="eyebrow">Difficulty</span></div>
+      <div class="chips">
+        <button class="chip" data-act="coach" data-v="1" aria-pressed="${coached()}">Coached</button>
+        <button class="chip" data-act="coach" data-v="0" aria-pressed="${!coached()}">Unassisted</button>
+      </div>
+      <p class="muted tiny">Coached shows a plain-English glossary of the terms in each task, the method for building the answer, and a note under every field explaining what it wants. It never tells you what is wrong in the artefact — finding that is always the exercise. Hints cost nothing in coached mode. Turn it off when the vocabulary has stopped being the obstacle.</p>
+      <hr class="rule">
       <label class="field"><span class="lb">Export<span class="hint">select all and copy</span></span>
         <textarea id="exportBox" rows="6" readonly>${esc(serialise())}</textarea></label>
       <div class="row"><button class="btn" data-act="copySave">Copy export</button><button class="btn" data-act="saveNow">Save now</button></div>

@@ -62,7 +62,9 @@ function effortGate(answers, fields, scenarioId){
   const words = wordCount(text);
   const asked = ASK_FOR_ANSWER.test(text);
   const empty = fields.filter(f => f.kind === "textarea").some(f => !String(answers[f.id]||"").trim());
-  if (asked || words < 20 || (empty && words < 60)) {
+  const soft = (typeof coached === "function") && coached();
+  const floor = soft ? 12 : 20, emptyFloor = soft ? 35 : 60;
+  if (asked || words < floor || (empty && words < emptyFloor)) {
     const pool = HINTS[scenarioId] || [
       "Go back to the artefact and read it line by line. The thing you are looking for is stated, not implied.",
       "Write down what you actually know, what you are assuming, and what you would have to ask. The middle list is usually the problem.",
@@ -70,7 +72,7 @@ function effortGate(answers, fields, scenarioId){
     ];
     return {
       refused:true,
-      reason: asked ? "You asked for the answer without attempting it. No."
+      reason: asked ? "You asked for the answer without attempting it. No — but here is where to look."
         : (words === 0 ? "Nothing submitted." : "That is not an attempt — " + words + " words across the written fields."),
       hints: pool.slice(0, asked ? 1 : 2)
     };

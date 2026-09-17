@@ -118,6 +118,10 @@ textarea::placeholder{color:var(--ink-3)}
 label.field{display:block}
 label.field>.lb{display:flex;justify-content:space-between;gap:10px;align-items:baseline;font-size:13px;font-weight:600;margin-bottom:5px}
 label.field>.lb .hint{font-weight:400;font-size:12px;color:var(--ink-3)}
+.coachline{font-size:12.5px;line-height:1.5;color:var(--ink-2);background:var(--accent-soft);border-left:2px solid var(--accent);padding:8px 11px;border-radius:0 var(--r) var(--r) 0;margin:0 0 7px}
+.coachline strong{color:var(--ink)}
+details.callout summary::marker{color:var(--ink-3)}
+details.callout[open] summary{border-bottom:1px solid var(--line)}
 
 /* ---------- in-fiction artefact sheets ---------- */
 .sheet{background:var(--paper);border:1px solid var(--line-2);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow)}
@@ -325,6 +329,288 @@ function gameDate(tier, quarter, day){
   return d;
 }
 function fmtDate(d){ return WEEKDAYS[d.getUTCDay()] + " " + d.getUTCDate() + " " + MONTHS[d.getUTCMonth()] + " " + d.getUTCFullYear(); }
+/* ============================================================
+   The Handbook — what the job is, and the words it uses.
+   ============================================================ */
+
+const JOB_MODEL = [
+  ["A control", "something an organisation does, on purpose and repeatedly, to reduce a risk.",
+   "\"We review who has access to the pupil database every quarter.\" That is a control. Not a tool, not a setting — a thing people do."],
+  ["Evidence", "proof the control actually happened.",
+   "The completed access review, with a date, the name of the person who did it, what they found and what they changed. A screenshot with no date is not evidence. A policy nobody approved is not evidence."],
+  ["A risk", "what happens if the control isn't there, or fails.",
+   "No access review → leavers keep their logins → someone reads records they have no business reading → the school has a notifiable breach. That chain is the risk."],
+  ["An audit", "someone checking whether your evidence matches your claims.",
+   "You said you review access quarterly. Show me the last four. This is the entire emotional logic of the job: everything you write, you will one day have to prove."]
+];
+
+const JOB_TRUTHS = [
+  ["You do not fix anything technical.",
+   "You do not patch servers, configure firewalls or write code. When a pen test finds something, you do not fix it — you make sure it is owned, scheduled, tracked and escalated when it slips. Engineers sometimes resent this. Learning to be useful to them anyway is most of the job."],
+  ["Your output is documents and decisions.",
+   "A risk register entry. A supplier recommendation. A corrective action. A paragraph in a board pack. An email that gets a director to do something they were avoiding. That is the product."],
+  ["Most of the work is chasing people.",
+   "Roughly: 50% getting evidence out of busy people who did not ask for your project, 30% writing, 20% judgement calls that actually matter. The 20% is why the job is interesting. The 50% is why it pays."],
+  ["Proportionality is the skill nobody tells you about.",
+   "Anyone can demand ISO 27001 from every supplier. The analyst who gets promoted is the one who knows which suppliers need a full assessment and which need ten minutes, because the business keeps coming back to them instead of routing around them."],
+  ["You are the person who says the unwelcome thing, calmly.",
+   "\"That answer to the customer isn't accurate.\" \"That's not ours to decide.\" \"No, we're not deleting that.\" Said once, evenly, in writing, with a reason. Not as a crusade."]
+];
+
+const IG_BRIDGE = [
+  ["Statutory clocks", "SAR one month, FOI 20 working days",
+   "UK GDPR Article 33's 72 hours is the same muscle: a clock that starts on awareness, not on certainty. You already know the panic of a deadline that began before you were told.", "have"],
+  ["Controller and processor", "who decides the purpose, who acts on instruction",
+   "This is the crux of half of cyber GRC in a supplier-heavy world — and it was the answer to the incident task in the sim. You know this better than most security people do.", "have"],
+  ["Special category data and safeguarding sensitivity", "Article 9, children's records, EHCPs",
+   "You instinctively know the difference between 'personal data' and 'data that could get a child hurt'. Security teams routinely miss this. It is your edge, not your baggage.", "have"],
+  ["Defensible decision-making", "recording why you redacted, why you withheld, why you disclosed",
+   "This is the whole of professional craft: the decision plus the reason plus the date plus your name. GRC calls it an audit trail. You call it Tuesday.", "have"],
+  ["Extracting things from unwilling colleagues", "chasing a service for the records they promised",
+   "Evidence chasing is SAR collation with a different noun.", "have"],
+  ["Framework literacy", "the shape of ISO 27001, NCSC CAF, Cyber Essentials",
+   "Not memorising 93 controls — knowing the structure, so when someone says 'that's a clause 9 problem, not an Annex A one' you know what they mean.", "need"],
+  ["Risk register mechanics", "cause→event→consequence, likelihood × impact, the four treatments, risk owner",
+   "A specific and quite small craft. Two weeks of deliberate practice and you are competent. This is what the first task was testing.", "need"],
+  ["Evidence and audit mechanics", "major / minor / OFI, corrective action, root cause",
+   "You know how to keep a record. What is new is the certification machinery around it and the language findings are written in.", "need"],
+  ["Supplier assurance", "tiering, reading certificates and SOC 2 reports, contract clauses",
+   "The most immediately hireable skill on this list, and the one where your Article 28 knowledge gives you a head start over most junior security hires.", "need"],
+  ["Security vocabulary", "least privilege, MFA, patch SLA, pen test, CVSS, EDR",
+   "You need to understand these well enough to have a conversation and challenge a claim. You never need to configure any of them.", "need"]
+];
+
+const GLOSSARY = [
+  ["Risk", [
+    ["Risk register", "The list of things that could go wrong, each with a score, an owner and a plan. The central artefact of the job.",
+     "If it is not in the register, the organisation has not decided anything about it."],
+    ["Cause → event → consequence", "The three-part shape of a properly written risk. The cause is the weakness that already exists. The event is the bad thing that could happen. The consequence is what it costs in the real world.",
+     "\"Because [cause], there is a risk that [event], resulting in [consequence].\" Write it in that order and a scorer, an owner and a treatment all fall out of it. Write \"data breach\" instead and nobody can do anything with it."],
+    ["Likelihood × Impact", "The two numbers you score a risk on, usually 1–5 each, multiplied to give a score out of 25. Likelihood is how probable over a stated period (often 12 months). Impact is how bad if it happens.",
+     "The numbers are not science. They exist so that fifty risks can be put in an order. What matters is that you can say why you chose 4 and not 2."],
+    ["Risk appetite", "The organisation's stated line for what it will tolerate. Usually a score threshold: above this we must act, below this we can live with it.",
+     "It is what stops risk scoring being an opinion. If the appetite says 15+ must be treated in 30 days, a 16 is not a debate."],
+    ["The four treatments", "Modify (reduce it), Retain (accept it knowingly), Avoid (stop doing the thing), Share (insure it or contract it out).",
+     "Retain is a real, legitimate answer — but only with a named owner signing it off in writing. \"We'll just accept it\" said in a meeting is not Retain, it is drift. And Share does not move a legal obligation you hold."],
+    ["Risk owner", "The person accountable for the risk — who can authorise the money, the time or the change that treats it.",
+     "Not the person who caused it. Not the engineer who will do the work. Not you. Getting this wrong is the most common junior mistake and the easiest to fix."],
+    ["Inherent vs residual risk", "Inherent is the score before your controls. Residual is the score after them.",
+     "Sign-off is always on the residual. \"We've reduced this from 20 to 8, and the owner accepts the 8\" is a finished piece of work."],
+    ["Risk vs issue", "A risk might happen. An issue is already happening.",
+     "Half the entries in a bad register are issues wearing a risk costume. If it is already true, it does not need a likelihood — it needs an action."]
+  ]],
+  ["ISO/IEC 27001:2022", [
+    ["ISMS", "Information Security Management System. The whole machine: the scope, the policies, the risk process, the controls, the evidence, the reviews.",
+     "The certificate is awarded to the ISMS, not to the company's security. That distinction is the reason this job exists."],
+    ["Clauses 4–10", "The management-system requirements — the mandatory part. Context and scope (4), leadership (5), planning and risk (6), support and competence (7), operation (8), performance evaluation including internal audit and management review (9), improvement and corrective action (10).",
+     "This is where certificates are actually lost. Companies obsess over controls and fail on clause 9 because nobody ran an internal audit or a management review."],
+    ["Annex A", "The control catalogue: 93 controls in 4 themes — Organisational (5.x), People (6.x), Physical (7.x), Technological (8.x). This is the 2022 edition. The old 2013 edition had 114 controls in 14 domains and is withdrawn.",
+     "Cited as A.5.15, A.8.13 and so on. You do not memorise them. You learn to look them up and cite the right one, which is a skill worth about ten thousand pounds a year."],
+    ["Statement of Applicability (SoA)", "The document listing all 93 controls and saying, for each one, whether it applies, why, and whether it is implemented.",
+     "Excluding a control is allowed. Excluding it without a written justification is a finding. The SoA is the first thing an auditor reads."],
+    ["Scope", "The written boundary of the ISMS: which parts of the organisation, which services, which locations, which systems.",
+     "Scope is a commercial decision disguised as a technical one. Draw it too wide and certification becomes unaffordable; too narrow and the customer's certificate does not cover what they are buying — which is exactly the trap in the Lumen task."],
+    ["Stage 1 / Stage 2 / surveillance", "Stage 1 checks whether your ISMS exists and is ready. Stage 2 tests whether it actually operates. Surveillance audits happen annually after that, with full recertification every three years.",
+     "Stage 1 is a documentation review. Stage 2 is where they talk to your control owners, and where your evidence habits show."],
+    ["UKAS accreditation", "UKAS is the UK's national accreditation body. It accredits the certification bodies that issue certificates.",
+     "An unaccredited certificate is a purchased PDF. When you check a certificate you check: is it the 2022 standard, is it in date, does the scope cover the service, and is the issuing body accredited. All four."]
+  ]],
+  ["Audit and evidence", [
+    ["Control owner", "The person who runs a control day to day and who an auditor will interview about it.",
+     "Your job is to make sure they know they own it. Surprisingly often, they don't."],
+    ["Evidence QC", "Checking that what someone gave you actually evidences the control they claim it evidences.",
+     "A screenshot with no date. A policy with no approval. A backup job with no restore test. All three are the most common thing you will reject, politely, several times a week."],
+    ["Major / Minor / OFI", "Audit finding severities. A major is a systemic failure or total absence of a required control — it blocks certification until fixed. A minor is a single lapse in something that otherwise works. An OFI (opportunity for improvement) is advice with no obligation.",
+     "Classifying a finding is a judgement you will be asked to make and defend. \"One person missed one review\" is a minor. \"Nobody has ever done these reviews\" is a major."],
+    ["Corrective action", "The fix for a finding — which must address the cause, not the symptom.",
+     "\"We have now completed the missing access review\" is a symptom fix and will be rejected. \"The review had no owner and no calendar trigger; we have assigned both\" is a corrective action."],
+    ["Root cause", "Why the control failed, as opposed to what failed.",
+     "Keep asking why until the answer is about a process, an incentive or a design — never a person. \"Dmitri installed something silly\" is not a root cause. \"Developer machines have local admin and no application control\" is."],
+    ["Nonconformity", "The formal word for \"you are not doing what the standard, or your own documentation, says you do\".",
+     "Note the second half. Writing a policy that promises more than you do is how organisations generate their own findings."],
+    ["Internal audit / management review", "Clause 9 requirements. You audit your own ISMS on a planned cycle, and leadership formally reviews it at least annually.",
+     "These two produce paperwork nobody wants to do and are the single most common reason a certification audit goes badly."]
+  ]],
+  ["Third-party risk", [
+    ["Tiering", "Sorting suppliers by how much harm they could do you, so that assurance effort is proportionate. Usually Critical / High / Medium / Low.",
+     "Tiering is the whole game. It is what lets you spend three days on one supplier and ten minutes on another without being arbitrary about it."],
+    ["Security questionnaire", "The list of questions you send a supplier. Also the list of questions customers send you.",
+     "Read the answers for evasion, not just for content. \"MFA is available\" is not \"MFA is enforced\". \"Data is encrypted\" does not say at rest, in transit, or who holds the keys."],
+    ["SOC 2 Type I vs Type II", "Type I: an auditor looked at whether the controls were suitably designed on one specific date. Type II: an auditor tested whether they actually operated across a period, usually 6–12 months.",
+     "Type I tells you almost nothing about whether anything works. A Type I claiming \"no exceptions\" is meaningless — there was no period in which an exception could be observed."],
+    ["CUECs", "Complementary User Entity Controls. The section of a SOC 2 listing the things the customer must do for the supplier's controls to work at all.",
+     "Almost nobody reads this section. It is usually a list of your own control failures, handed to you free, in a document you were given for reassurance."],
+    ["Bridge letter", "A short statement from the supplier covering the gap between the end of their audit period and today.",
+     "The correct thing to ask for when a report is a year old and you are told the next one is coming."],
+    ["Article 28", "The UK GDPR article setting out what must be in a contract between a controller and a processor. Its terms are mandatory, not negotiable.",
+     "\"Our standard terms are equivalent\" is not a legal test and you are allowed to say so. Article 28(2) also means a processor cannot bring in a sub-processor without the controller's authorisation — which is the trap in the Lumen task."],
+    ["Sub-processor", "A supplier's supplier, who also touches the data.",
+     "The question suppliers most often answer wrongly, sometimes twice in the same questionnaire."],
+    ["IDTA / UK Addendum", "The UK's transfer mechanisms for sending personal data outside the UK: the International Data Transfer Agreement, or the UK Addendum bolted onto the EU standard contractual clauses. Both normally need a transfer risk assessment.",
+     "Triggered by access as well as storage. Support staff in another country reading the data is a transfer, even if the servers never move."]
+  ]],
+  ["Incidents and the law", [
+    ["Personal data breach", "A security incident causing accidental or unlawful destruction, loss, alteration, unauthorised disclosure of, or access to personal data.",
+     "The definition is broader than \"stolen data\" — losing it counts, and so does altering it. But it must involve personal data. Malware on a laptop with no personal data on it is a security incident and not a personal data breach, which is the whole point of the Dmitri task."],
+    ["Article 33", "The notification duty. 33(1): a controller notifies the ICO within 72 hours of becoming aware, unless the breach is unlikely to result in a risk to people. 33(2): a processor notifies the controller without undue delay. 33(5): you must record every breach and your reasoning, including the ones you decide not to report.",
+     "If you are the processor, you do not report to the ICO. You tell the controller, fast, because your notification is what starts their clock. Getting this backwards is the most common mistake in the whole subject."],
+    ["Article 34", "Telling the affected individuals, required when there is a high risk to their rights and freedoms.",
+     "A controller decision, not a processor one — but a good processor says plainly when it thinks the threshold is met."],
+    ["Awareness", "The moment the 72 hours starts. Not the moment you are certain — the moment you have a reasonable degree of certainty that a breach has occurred.",
+     "You notify on incomplete facts and update in phases. Waiting for a tidy picture is how organisations miss the deadline while feeling diligent."],
+    ["Severity classification", "Your own internal scale, usually P1–P4, for how hard the organisation should be reacting.",
+     "Entirely separate from whether something is reportable. A P1 may not be notifiable; a P3 might be."],
+    ["Post-incident review", "The write-up afterwards that produces corrective actions and register entries.",
+     "The step that turns an incident from a cost into evidence of a working ISMS. An assurance pack showing incidents handled well beats one claiming zero incidents, which reads to any auditor as nobody looking."]
+  ]],
+  ["Security words you need but will not own", [
+    ["Least privilege / need-to-know", "People get the minimum access required to do their job, and no more.",
+     "The principle behind most access findings you will ever write."],
+    ["Shared or service account", "A login used by more than one person, or by a system.",
+     "The problem is not the password. It is that you cannot tell who did what, and you cannot remove one person's access without removing everyone's."],
+    ["MFA", "Multi-factor authentication. A password plus something else.",
+     "Watch for \"available\" versus \"enforced\". Available means off."],
+    ["Read replica", "A copy of a live database, kept in sync, used for reporting so that queries don't slow the real thing down.",
+     "A replica contains the same data as production. \"It's only the replica\" and \"it's read-only\" are not confidentiality arguments — they are availability and integrity arguments. That is the trap in the Metabase task."],
+    ["Pen test / CVSS", "A penetration test is an authorised simulated attack. CVSS is a 0–10 technical severity score attached to findings.",
+     "Your job is to translate CVSS into business risk and to challenge it in both directions. A CVSS 9.8 on a system holding nothing is not your top priority; a CVSS 5 on the pupil database might be."],
+    ["Patch SLA", "The agreed time to fix vulnerabilities by severity — e.g. critical in 14 days.",
+     "Your metric is not \"are we patching\" but \"how often do we breach our own SLA, and who knows\"."],
+    ["EDR", "Endpoint detection and response. The security software on laptops and servers that spots and quarantines malicious activity.",
+     "In the Dmitri task, \"Defender quarantined it\" is EDR working — after the thing had already run."],
+    ["DLP", "Data loss prevention. Tooling that spots sensitive data leaving.",
+     "Brightpath has none, which is why school staff can paste EHCP details into a support ticket unchallenged."],
+    ["RTO / RPO", "Recovery time objective: how long you may be down. Recovery point objective: how much data you may lose.",
+     "Both are business decisions that someone senior must actually agree. \"Backups are daily\" states an RPO of up to 24 hours whether anyone meant to or not."]
+  ]]
+];
+
+const WORKED_EXAMPLE = {
+  title: "Building the Metabase risk, step by step",
+  intro: "This is the task you had. Nothing here is a trick — it is a recipe, and the recipe is the same every time. Read the thread again alongside it.",
+  steps: [
+    ["1. Find what is already true.",
+     "Not what might happen — what is true right now, in the artefact. From the thread: one login (analytics@brightpath.io) is shared; it has no MFA; Rob cannot list who holds it and names two former contractors; the account reads a replica containing names, dates of birth, SEN flags and free-text pastoral notes; a fifth person asked for it this morning.",
+     "That list is your cause. Everything true is free — you do not have to argue for it."],
+    ["2. Name the bad thing that could follow.",
+     "Someone with no legitimate need reads identifiable pupil records, including safeguarding content.",
+     "This is your event. One event, not three. If you find yourself writing \"and also\", you have two risks and should write two entries."],
+    ["3. Follow it to something a CEO would care about.",
+     "A school, as controller, has a notifiable breach. A child's pastoral information is in the wrong hands. Brightpath loses the Fenwick contract that the whole ISMS exists to win.",
+     "This is your consequence, and it is where most people stop too early. \"A data breach\" is not a consequence — it is the event again. Push one step past it: money, harm, regulator, contract."],
+    ["4. Put the three parts in order and read it aloud.",
+     "\"Because Metabase access to the production replica is granted through a single shared credential with no MFA and no record of who holds it, there is a risk that people with no legitimate need read identifiable pupil records including SEN flags and pastoral notes, resulting in a notifiable breach for the schools as controllers, harm to a child, and loss of the Fenwick contract.\"",
+     "One sentence. Long is fine. The order is what does the work."],
+    ["5. Score it, then say why.",
+     "Likelihood 4 — not a hypothetical; the credential is circulating and a fifth person asked for it this morning. Impact 4 — safeguarding-adjacent data about children, with contractual and regulatory consequences. Score 16.",
+     "The number matters less than the sentence after it. \"4 because a fifth person asked for it this morning\" is a defence. \"4\" on its own is a guess."],
+    ["6. Read the score against the appetite, and let it choose the treatment.",
+     "Brightpath's appetite says 15–25 is unacceptable and must be treated within 30 days. 16 is therefore Modify. Retain is not available to you at that score.",
+     "This is why appetite exists — so the treatment is not your opinion."],
+    ["7. Pick the owner by asking who can authorise the fix.",
+     "The fix is engineering work on the data platform: kill the shared account, named access, mask pastoral notes from the analytics view, give sales a demo dataset. Who can direct that? Saskia, the CTO.",
+     "Not Rob — he caused it and is not on the leadership team. Not Priya — two days a week and a contractor. Not you. Never you."],
+    ["8. Give the treatment a shape.",
+     "\"Shared credential disabled and named Metabase access issued within 10 working days; pastoral_notes and SEN excluded from the analytics view; demo dataset for sales before the Fenwick pitch. Owner: Saskia.\"",
+     "What, who, by when. If you cannot write a date, you have not finished thinking — and that is the whole of what the grader calls professional craft."]
+  ],
+  outro: "That is a 4, comfortably, on all four dimensions. Nothing in it required knowing a control number. If you want the extra half-mark, add the Annex A references — A.5.15 access control, A.5.18 access rights, A.8.3 information access restriction, A.8.11 data masking — but they are decoration on top of the reasoning, not a substitute for it."
+};
+
+const DIM_EXPLAIN = [
+  ["technical", "Is it right, according to the standard or the law?",
+   "Did you get the controller/processor position right? Is the article number correct? Did you notice the certificate was for the wrong edition? This is the dimension that rewards looking things up.",
+   "Cheapest way to gain marks: stop writing \"data breach\" and start writing which specific thing happened to which specific data."],
+  ["judgement", "Proportionality, prioritisation, and knowing when to escalate versus decide.",
+   "Did you demand ISO 27001 from a four-person supplier? Did you treat the loud email as the urgent one? Did you decide something that was not yours to decide?",
+   "Cheapest way to gain marks: before you answer, ask \"how bad is this compared with the other things on my desk, and whose decision is it actually?\""],
+  ["communication", "Clear, neutral, and written for the person who has to act on it.",
+   "Would Nadia know what to do after reading it? Is it free of \"we take security seriously\" and \"robust processes\"? Is it short enough to be read?",
+   "Cheapest way to gain marks: delete every sentence that would survive being moved to a different company's document."],
+  ["craft", "Evidence-thinking, root causes, named owners, realistic dates.",
+   "Does every action have a person and a date? Did you fix the cause or the symptom? Did you write down the decision and the reason?",
+   "Cheapest way to gain marks: never end a piece of work without a name and a date in it."]
+];
+/* ============================================================
+   Coached mode — scaffolding for someone learning the craft.
+   ============================================================ */
+
+const GLOSSARY_INDEX = {};
+GLOSSARY.forEach(([group, items]) => items.forEach(([term, def, why]) => {
+  GLOSSARY_INDEX[term.toLowerCase()] = { term, def, why, group };
+}));
+function lookupTerms(names){
+  return (names||[]).map(n => GLOSSARY_INDEX[String(n).toLowerCase()]).filter(Boolean);
+}
+
+/* What each input actually wants. Keyed by field id, shared across scenarios. */
+const FIELD_COACH = {
+  statement: "One sentence, three parts, in this order: <strong>Because</strong> [what is already true and wrong] <strong>there is a risk that</strong> [the bad thing that could follow] <strong>resulting in</strong> [what it costs in money, harm, regulator or contract]. Long is fine. Order is what does the work.",
+  likelihood: "How probable over the next twelve months, given what is true <em>today</em>. If it is already happening, that is a 5 — or it is not a risk at all, it is an issue.",
+  impact: "How bad if it happens — to the organisation and to the people in the data. Children's safeguarding information sits high.",
+  treatment: "Read your score against the appetite panel below, and let it choose. Above appetite means Modify. Retain needs an owner signing it off in writing. Share does not move a legal duty you hold.",
+  owner: "Ask one question: who can authorise the fix — the money, the time or the change? Not the person who caused it, not the engineer who does the work, and never you.",
+  rationale: "Three or four sentences: why that likelihood, why that impact, why that treatment given the appetite, why that owner. A number with a reason behind it is a defence; a number on its own is a guess.",
+
+  tier: "How much harm could this supplier do you? Look at what data they actually touch, how much, how sensitive, and whether you could operate without them. This decides how much assurance it is reasonable to demand.",
+  decision: "Approve, approve with conditions, decline, or escalate. Conditions are the usual grown-up answer — but only if they are gates with an owner and a date, not aspirations.",
+  findings: "List what is wrong with the <em>assurance</em>, not with the supplier. Go through each document line by line and ask \"and?\" of every claim. Contradictions between two answers are worth more than any single weak answer.",
+  conditions: "For each condition: what must be true, who does it, by when, and what does not happen until it is. \"We will monitor\" is not a condition.",
+  note: "Two short paragraphs for a non-security reader who has to act. Say the decision first, then the reason, then what you need from them. No jargon walls.",
+
+  sev: "Your internal scale for how hard the organisation should react. Completely separate from whether anything is reportable. Read the severity panel below, and if scope is still unknown, do not size it down to feel calmer.",
+  actions: "Numbered, in order, each one a person doing a thing. Start with whatever is still getting worse while you type. Then whatever is about to become irreversible.",
+  questions: "For each: the question, and who you are asking. A question you cannot address to a named person is not yet a question.",
+  role: "Who is the controller of this data, and who is the processor? Everything you owe, to whom, and by when, follows from that one answer.",
+  drive: "Is it part of this incident, a separate one, or the same incident with a much bigger scope? Say what you would need to know before you would accept that nothing happened.",
+  justify: "Cite what you are relying on — the article, the role, the specific facts. Someone non-technical has to be able to repeat this out loud and have it hold.",
+  tom: "Three or four sentences a real person could say on a phone call. Apologise, state facts, say what happens next, give a time. Delete anything that sounds like a press release.",
+  followup: "Corrective actions with owners and dates, register entries, and anything leadership should now say differently. Root causes, not the name of whoever clicked.",
+  callum: "He has made a specific suggestion. Answer that suggestion, plainly, and then give him a reason he can actually use with the person who is pressuring him."
+};
+
+const TASK_RECIPE = {
+  risk: ["Read the artefact twice and list only what is <em>already true</em>. That list is your cause and it is free — you do not have to argue for anything true.",
+    "Name the one bad thing that could follow. One. If you write \"and also\", you have two risks.",
+    "Push the consequence one step past \"a data breach\" — to money, harm, a regulator or a contract.",
+    "Assemble: Because … there is a risk that … resulting in …",
+    "Score it, then write the sentence that defends each number.",
+    "Read the score against the appetite panel; let it pick the treatment.",
+    "Pick the owner by asking who can authorise the fix.",
+    "Finish with what happens, who does it, and by when."],
+  supplier: ["List what data this supplier actually touches, how much, and how sensitive. Tier from that, before you read anything else.",
+    "Take each document and test every claim with one word: \"and?\" An expired certificate, a scope that covers something else, an issuer nobody accredited — each is fatal on its own.",
+    "Cross-read the answers against each other. Suppliers contradict themselves more often than they lie outright.",
+    "Separate what is genuinely wrong from what is merely thin. A four-person company with no certification is not the same finding as a company with a certificate for the wrong service.",
+    "Decide: approve, conditions, decline, escalate. Then make every condition a gate with an owner, a date, and something that does not happen until it is met.",
+    "Write the note for the person holding the purchase order, not for another security person. Say the decision in the first line."],
+  incident: ["Ask what is still getting worse while you read. Stop that first.",
+    "Ask what is about to become irreversible — a reimage, a deletion, a log window closing. Protect that second.",
+    "Establish the roles: who is the controller, who is the processor. Your duties and your deadlines both come from that.",
+    "Separate severity (how hard we react) from notifiability (what the law requires). They are different questions with different answers.",
+    "Decide on incomplete facts, in phases, and write down the decision and the reasoning — including a decision not to notify, which is the one you will most need to evidence later."]
+};
+
+const TASK_TERMS = {
+  risk: ["Cause → event → consequence","Likelihood × Impact","Risk appetite","The four treatments","Risk owner","Risk register","Risk vs issue","Inherent vs residual risk"],
+  supplier: ["Tiering","Security questionnaire","Article 28","Sub-processor","UKAS accreditation","Scope","Annex A"],
+  incident: ["Personal data breach","Article 33","Awareness","Severity classification","Post-incident review","Root cause"]
+};
+const SCENARIO_TERMS = {
+  "risk-metabase": ["Shared or service account","MFA","Read replica","Least privilege / need-to-know"],
+  "risk-backup":   ["RTO / RPO","Control owner","Evidence QC"],
+  "risk-intercom": ["Article 28","Sub-processor","DLP"],
+  "sup-lumen":     ["IDTA / UK Addendum","Statement of Applicability (SoA)"],
+  "sup-cloudspan": ["SOC 2 Type I vs Type II","CUECs","Bridge letter","IDTA / UK Addendum"],
+  "sup-snapdesk":  ["Article 28"],
+  "inc-export":    ["Article 34","Sub-processor"],
+  "inc-laptop":    ["EDR","Root cause","Corrective action","Patch SLA"]
+};
+function termsForTask(spec){
+  const base = TASK_TERMS[spec.type === "incidentBeat" ? "incident" : spec.type] || [];
+  return lookupTerms(base.concat(SCENARIO_TERMS[spec.scenarioId] || []));
+}
+function coached(){ return !S.settings || S.settings.coached !== false; }
 /* ============================================================
    Artefact renderers — the in-fiction documents.
    ============================================================ */
@@ -1451,7 +1737,9 @@ function effortGate(answers, fields, scenarioId){
   const words = wordCount(text);
   const asked = ASK_FOR_ANSWER.test(text);
   const empty = fields.filter(f => f.kind === "textarea").some(f => !String(answers[f.id]||"").trim());
-  if (asked || words < 20 || (empty && words < 60)) {
+  const soft = (typeof coached === "function") && coached();
+  const floor = soft ? 12 : 20, emptyFloor = soft ? 35 : 60;
+  if (asked || words < floor || (empty && words < emptyFloor)) {
     const pool = HINTS[scenarioId] || [
       "Go back to the artefact and read it line by line. The thing you are looking for is stated, not implied.",
       "Write down what you actually know, what you are assuming, and what you would have to ask. The middle list is usually the problem.",
@@ -1459,7 +1747,7 @@ function effortGate(answers, fields, scenarioId){
     ];
     return {
       refused:true,
-      reason: asked ? "You asked for the answer without attempting it. No."
+      reason: asked ? "You asked for the answer without attempting it. No — but here is where to look."
         : (words === 0 ? "Nothing submitted." : "That is not an attempt — " + words + " words across the written fields."),
       hints: pool.slice(0, asked ? 1 : 2)
     };
@@ -1761,7 +2049,8 @@ function newGame(name){
     seen: [],
     dayLog: [],
     flow: null,
-    ui: { view:"day" },
+    settings: { coached: true },
+    ui: { view:"day", hb:"job" },
     meta: { created: Date.now(), updated: Date.now() }
   };
 }
@@ -1804,7 +2093,7 @@ async function loadGame(){
 }
 function migrate(p){
   const base = newGame(p.player && p.player.name);
-  return Object.assign(base, p, { ui: Object.assign({view:"day"}, p.ui||{}) });
+  return Object.assign(base, p, { settings: Object.assign({coached:true}, p.settings||{}), ui: Object.assign({view:"day", hb:"job"}, p.ui||{}) });
 }
 
 /* ---------------- progression ---------------- */
@@ -2062,7 +2351,7 @@ function renderRail(){
     <div>
       <div class="railhead"><span>Elsewhere</span></div>
       <div class="navlist">
-        ${[["day","Today"],["register","Risk register"],["company","The company"],["record","My record"],["save","Save & settings"]]
+        ${[["day","Today"],["handbook","The handbook"],["register","Risk register"],["company","The company"],["record","My record"],["save","Save & settings"]]
           .map(([v,l]) => `<button class="navbtn" data-act="view" data-v="${v}" aria-current="${S.ui.view===v}">${l}</button>`).join("")}
       </div>
     </div>
@@ -2076,6 +2365,7 @@ function renderRail(){
 
 /* ---------------- main router ---------------- */
 function renderMain(){
+  if (S.ui.view === "handbook") return viewHandbook();
   if (S.ui.view === "register") return viewRegister();
   if (S.ui.view === "company")  return viewCompany();
   if (S.ui.view === "record")   return viewRecord();
@@ -2104,7 +2394,9 @@ function viewOnboard(){
     <label class="field"><span class="lb">Your name<span class="hint">this is who the NPCs will address</span></span>
       <input type="text" id="pname" data-field="pname" value="${esc(S.player.name)}" maxlength="42"></label>
     <div class="row"><button class="btn primary" data-act="begin">Start day one</button>
-      <button class="btn" data-act="view" data-v="save">I have a save to import</button></div>
+      <button class="btn" data-act="view" data-v="handbook">Read the handbook first</button>
+      <button class="btn ghost" data-act="view" data-v="save">Import a save</button></div>
+    <div class="callout"><span class="ch">New to GRC?</span>Start with <strong>The handbook</strong>. It explains what the job actually is, which parts of Information Governance already transfer, every term this simulator uses, and a full worked example of a risk write-up built step by step. Coached mode is on by default — it puts the glossary and the method inside each task.</div>
     <hr class="rule">
     ${howToPlay()}
   </div>`;
@@ -2117,6 +2409,7 @@ function howToPlay(){
       <dt>The loop</dt><dd>Each session is one working day: a morning briefing and inbox, a graded triage call, two pieces of real work, then your manager's debrief.</dd>
       <dt>Triage</dt><dd>Put the inbox in the order you would actually work it and say why. The order matters less than the reasoning — and the most important thing in the list is rarely the loudest.</dd>
       <dt>The work</dt><dd>Every task hands you a real artefact: a thread, a returned questionnaire, a certificate, a live incident. Read it properly. Flaws are planted, never flagged — finding them is the exercise.</dd>
+      <dt>Coached mode</dt><dd>On by default. Each task carries a glossary of its terms, the method for building the answer, and a note under every field. It never reveals the planted flaw. Switch it off in Save &amp; settings when you no longer need it.</dd>
       <dt>Grading</dt><dd>Four dimensions, 0–5: technical accuracy, judgement, communication, professional craft. A 3 is a competent professional job. A 5 is rare. Asking for the answer without attempting it gets you a hint and nothing else.</dd>
       <dt>Integrity</dt><dd>One stat is not recoverable by being clever. Advising the company to conceal a reportable matter, fabricate evidence or mislead an auditor ends badly, immediately.</dd>
       <dt>Saving</dt><dd>Progress saves automatically where storage is available, and there is always an export/import you can paste somewhere safe.</dd>
@@ -2204,12 +2497,13 @@ function viewTask(){
     ${spec.render()}
     <div class="card pad stack">
       <div><span class="eyebrow">Your work</span></div>
+      ${coached() ? termsPanel(spec) + recipePanel(spec) : ""}
       ${spec.fields.map(f => renderField(spec, f)).join("")}
       ${spec.type === "risk" ? riskCriteriaPanel() : ""}
       ${spec.type === "incidentBeat" && spec.sevOptions ? sevPanel() : ""}
       ${busyRow("Your work is being marked")}
       <div class="row"><button class="btn primary" data-act="submitTask" ${BUSY?"disabled":""}>Submit</button>
-        <button class="btn ghost" data-act="hint">I'm stuck — one hint <span class="tiny muted">(caps this task at 4)</span></button></div>
+        <button class="btn ghost" data-act="hint">I'm stuck — one hint${coached()?"":` <span class="tiny muted">(caps this task at 4)</span>`}</button></div>
       ${S.flow.hintShown ? `<div class="callout amberc"><span class="ch">Hint</span>${esc(S.flow.hintShown)}</div>` : ""}
     </div>`;
 }
@@ -2220,13 +2514,14 @@ function renderField(spec, f){
   const v = getAnswer(spec, f.id) || "";
   const id = "f_" + spec.scenarioId + "_" + spec.beatId + "_" + f.id;
   const lb = `<span class="lb">${esc(f.label)}${f.hint?`<span class="hint">${esc(f.hint)}</span>`:""}</span>`;
+  const cc = coached() && FIELD_COACH[f.id] ? `<div class="coachline">${FIELD_COACH[f.id]}</div>` : "";
   if (f.kind === "textarea")
-    return `<label class="field">${lb}<textarea id="${id}" data-field="ans" data-fid="${f.id}" rows="${f.rows||5}" placeholder="${esc(f.placeholder||"")}">${esc(v)}</textarea></label>`;
+    return `<label class="field">${lb}${cc}<textarea id="${id}" data-field="ans" data-fid="${f.id}" rows="${f.rows||5}" placeholder="${esc(f.placeholder||"")}">${esc(v)}</textarea></label>`;
   if (f.kind === "select")
-    return `<label class="field">${lb}<select id="${id}" data-field="ans" data-fid="${f.id}">${
+    return `<label class="field">${lb}${cc}<select id="${id}" data-field="ans" data-fid="${f.id}">${
       f.options.map(o => `<option${o===v?" selected":""}>${esc(o)}</option>`).join("")}</select></label>`;
   if (f.kind === "chips")
-    return `<div class="field">${lb}<div class="chips">${
+    return `<div class="field">${lb}${cc}<div class="chips">${
       f.options.map(o => `<button class="chip" data-act="chip" data-fid="${f.id}" data-v="${esc(o)}" aria-pressed="${o===v}">${esc(o)}</button>`).join("")}</div></div>`;
   return `<label class="field">${lb}<input type="text" id="${id}" data-field="ans" data-fid="${f.id}" value="${esc(v)}"></label>`;
 }
@@ -2413,6 +2708,14 @@ function viewSave(){
   return `<div class="card pad stack">
       <div><span class="eyebrow">Save & settings</span><h1 style="font-size:23px;margin-top:5px">Your career, as text</h1></div>
       <p class="muted tiny">Status: <strong>${esc(saveStatus)}</strong>. Progress is written automatically at the end of every graded piece of work. Copy the export somewhere safe if you want a career you cannot lose.</p>
+      <hr class="rule">
+      <div><span class="eyebrow">Difficulty</span></div>
+      <div class="chips">
+        <button class="chip" data-act="coach" data-v="1" aria-pressed="${coached()}">Coached</button>
+        <button class="chip" data-act="coach" data-v="0" aria-pressed="${!coached()}">Unassisted</button>
+      </div>
+      <p class="muted tiny">Coached shows a plain-English glossary of the terms in each task, the method for building the answer, and a note under every field explaining what it wants. It never tells you what is wrong in the artefact — finding that is always the exercise. Hints cost nothing in coached mode. Turn it off when the vocabulary has stopped being the obstacle.</p>
+      <hr class="rule">
       <label class="field"><span class="lb">Export<span class="hint">select all and copy</span></span>
         <textarea id="exportBox" rows="6" readonly>${esc(serialise())}</textarea></label>
       <div class="row"><button class="btn" data-act="copySave">Copy export</button><button class="btn" data-act="saveNow">Save now</button></div>
@@ -2425,6 +2728,124 @@ function viewSave(){
       <div class="row"><button class="btn" data-act="hardReset">Start a new career</button>
         <span class="tiny muted">Wipes this save. There is no undo.</span></div>
     </div>`;
+}
+/* ============================================================
+   Handbook view + coached-mode panels
+   ============================================================ */
+
+function viewHandbook(){
+  const sec = S.ui.hb || "job";
+  const tabs = [["job","What the job is"],["bridge","What you already have"],["words","The words"],["worked","A worked example"],["marks","How you're marked"]];
+  return `<div class="card pad stack">
+      <div><span class="eyebrow">Reference · read in any order</span>
+        <h1 style="font-size:27px;margin-top:6px">The handbook</h1></div>
+      <p class="muted">Nothing in this job is difficult to understand. It is a small craft with a large vocabulary, and the vocabulary is the only part that takes time. Read this once, then keep it open while you work.</p>
+      <div class="chips">${tabs.map(([k,l]) => `<button class="chip" data-act="hb" data-v="${k}" aria-pressed="${sec===k}">${esc(l)}</button>`).join("")}</div>
+    </div>
+    ${sec==="job" ? hbJob() : sec==="bridge" ? hbBridge() : sec==="words" ? hbWords() : sec==="worked" ? hbWorked() : hbMarks()}`;
+}
+
+function hbJob(){
+  return `<div class="card pad stack">
+      <div><span class="eyebrow">Governance, Risk and Compliance</span>
+        <h2 style="font-size:21px;margin-top:5px">Four sentences that unlock most of it</h2></div>
+      <p class="muted tiny">Governance is who decides and who is accountable, written down. Risk is a maintained list of what could go wrong, scored and owned. Compliance is measured against something named — a standard, or the law. Everything below hangs off those four words.</p>
+      <div class="stack">${JOB_MODEL.map(([t,d,e]) => `<div class="callout">
+        <span class="ch">${esc(t)}</span><p><strong>${esc(d)}</strong></p><p class="muted">${esc(e)}</p></div>`).join("")}</div>
+      <hr class="rule">
+      <div><span class="eyebrow">Put together</span>
+        <p style="margin-top:6px">You are the person who makes an organisation able to <em>prove</em> it is managing security — to a customer, an auditor or a regulator. Not the person who makes it secure. That distinction sounds like a demotion and is actually the entire discipline: security without evidence cannot be sold, certified or defended.</p></div>
+    </div>
+    <div class="card pad stack">
+      <div><span class="eyebrow">What the job is actually like</span></div>
+      ${JOB_TRUTHS.map(([t,d]) => `<div><h3 style="font-size:16px">${esc(t)}</h3><p class="muted" style="margin-top:4px">${esc(d)}</p></div>`).join("")}
+    </div>
+    <div class="card pad stack">
+      <div><span class="eyebrow">The honest market view</span>
+        <h2 style="font-size:19px;margin-top:5px">Is a twelve-month pivot realistic from Information Governance?</h2></div>
+      <p>Yes, and more easily than from most places. UK GRC job ads ask for framework literacy, risk-register discipline, evidence habits, supplier assurance and the ability to write for executives. You already have the two hardest-to-teach parts — statutory-deadline discipline and defensible decision-making — and you have controller/processor knowledge that most junior security hires genuinely lack.</p>
+      <p>What you are missing is a specific, small and teachable list: the shape of the frameworks, register mechanics, certification machinery, and enough security vocabulary to challenge a claim without being able to configure anything. That is the list on the next tab, and it is the list this simulator drills.</p>
+      <p class="muted tiny">The risk to your pivot is not capability. It is that your CV reads as privacy-only, so keep converting anything you touch at work into security-governance language — a records-retention exercise is data minimisation and A.8.10; a supplier DPA review is third-party assurance; an IG audit is internal audit under clause 9.</p>
+    </div>`;
+}
+
+function hbBridge(){
+  const row = ([t,sub,d,k]) => `<div class="item" style="grid-template-columns:auto minmax(0,1fr)">
+      <span class="pill ${k==="have"?"good":"warn"}">${k==="have"?"have it":"to learn"}</span>
+      <div><div class="sj">${esc(t)}</div><div class="src" style="text-transform:none;letter-spacing:.02em">${esc(sub)}</div>
+      <div class="pv" style="margin-top:5px">${esc(d)}</div></div></div>`;
+  return `<div class="card pad stack">
+      <div><span class="eyebrow">The bridge</span><h2 style="font-size:21px;margin-top:5px">You are further in than you think</h2></div>
+      <p class="muted">Information Governance and cyber GRC are the same instincts pointed at a different risk. Five of the ten things this job needs, you do already — including the one the incident task turned on.</p>
+    </div>
+    <div class="card pad stack"><div><span class="eyebrow">Already yours</span></div>
+      <div class="inbox">${IG_BRIDGE.filter(r=>r[3]==="have").map(row).join("")}</div></div>
+    <div class="card pad stack"><div><span class="eyebrow">The actual gap</span></div>
+      <div class="inbox">${IG_BRIDGE.filter(r=>r[3]==="need").map(row).join("")}</div>
+      <p class="muted tiny">Five things. None of them conceptual. This is a vocabulary and repetition problem, which is exactly what a simulator is for.</p></div>`;
+}
+
+function hbWords(){
+  return GLOSSARY.map(([group, items]) => `<div class="card pad stack">
+      <div><span class="eyebrow">${esc(group)}</span></div>
+      ${items.map(([t,d,w]) => `<div>
+        <h3 style="font-size:15.5px">${esc(t)}</h3>
+        <p style="margin-top:3px">${esc(d)}</p>
+        <p class="muted tiny" style="margin-top:3px"><strong>Why you care:</strong> ${esc(w)}</p></div>`).join('<hr class="rule">')}
+    </div>`).join("");
+}
+
+function hbWorked(){
+  return `<div class="card pad stack">
+      <div><span class="eyebrow">Worked example</span><h2 style="font-size:21px;margin-top:5px">${esc(WORKED_EXAMPLE.title)}</h2></div>
+      <p class="muted">${esc(WORKED_EXAMPLE.intro)}</p>
+    </div>
+    <div class="card pad stack">
+      ${WORKED_EXAMPLE.steps.map(([h,body,note]) => `<div>
+        <h3 style="font-size:16px">${esc(h)}</h3>
+        <p style="margin-top:5px">${esc(body)}</p>
+        <p class="muted tiny" style="margin-top:4px">${esc(note)}</p></div>`).join('<hr class="rule">')}
+      <hr class="rule">
+      <div class="callout"><span class="ch">The point</span>${esc(WORKED_EXAMPLE.outro)}</div>
+    </div>`;
+}
+
+function hbMarks(){
+  return `<div class="card pad stack">
+      <div><span class="eyebrow">Grading</span><h2 style="font-size:21px;margin-top:5px">What the four numbers mean</h2></div>
+      <p class="muted">Every piece of work is scored 0–5 on four dimensions. A <strong>3 is a competent professional job</strong> — that is the target, and it should feel earned. A 5 is rare and means an auditor could read it unchanged. Nothing here rewards length or enthusiasm.</p>
+    </div>
+    ${DIM_EXPLAIN.map(([k,q,detail,cheap]) => `<div class="card pad stack">
+      <div class="spread"><div><span class="eyebrow">${esc(DIMS[k])}</span>
+        <h3 style="font-size:17px;margin-top:4px;max-width:40ch">${esc(q)}</h3></div></div>
+      <p class="muted">${esc(detail)}</p>
+      <div class="callout amberc"><span class="ch">Quickest marks available</span>${esc(cheap)}</div>
+    </div>`).join("")}
+    <div class="card pad stack">
+      <div><span class="eyebrow">Integrity</span><h3 style="font-size:17px;margin-top:4px">The one stat you cannot recover</h3></div>
+      <p class="muted">Advising the organisation to conceal a reportable matter, fabricate or backdate evidence, destroy records, or mislead an auditor, customer or regulator ends the task immediately, zeroes judgement and permanently marks your record. Disagreeing with your manager is not an integrity failure. Helping someone hide something is.</p>
+    </div>`;
+}
+
+/* ---------- panels shown inside a task when coached mode is on ---------- */
+function termsPanel(spec){
+  const t = termsForTask(spec);
+  if (!t.length) return "";
+  return `<details class="callout" style="padding:0" data-keep="terms"${S.ui.termsOpen?" open":""}>
+    <summary style="cursor:pointer;padding:12px 14px;font-size:13px;font-weight:600">The words in this task <span class="muted" style="font-weight:400">— ${t.length} terms, plain English</span></summary>
+    <div style="padding:0 14px 13px">${t.map(x => `<p style="margin-bottom:9px"><strong>${esc(x.term)}</strong> — ${esc(x.def)}<br><span class="muted tiny">${esc(x.why)}</span></p>`).join("")}
+    <p class="tiny muted">Every term this simulator uses, grouped by domain, is in <button class="btn small ghost" data-act="view" data-v="handbook" style="padding:2px 6px">The handbook</button>.</p></div>
+  </details>`;
+}
+function recipePanel(spec){
+  const key = spec.type === "incidentBeat" ? "incident" : spec.type;
+  const r = TASK_RECIPE[key];
+  if (!r) return "";
+  return `<details class="callout" style="padding:0" data-keep="recipe"${S.ui.recipeOpen?" open":""}>
+    <summary style="cursor:pointer;padding:12px 14px;font-size:13px;font-weight:600">How to build this answer <span class="muted" style="font-weight:400">— the method, not the answer</span></summary>
+    <div style="padding:0 14px 13px"><ol style="margin:0;padding-left:20px">${r.map(s => `<li style="margin-bottom:7px">${s}</li>`).join("")}</ol>
+    <p class="muted tiny" style="margin-top:9px">This recipe is the same every time. What changes is the artefact — and what is wrong in it is never flagged, because finding it is the exercise.</p></div>
+  </details>`;
 }
 /* ============================================================
    Controller and boot
@@ -2464,7 +2885,7 @@ async function doSubmitTask(){
   if (!r) { render(); return; }
   if (r.refused) { LAST_RESULT = r; S.flow.phase = "taskReview"; render(); return; }
 
-  if (S.flow.hintPenalty) {
+  if (S.flow.hintPenalty && !coached()) {
     r.dims.technical = Math.min(r.dims.technical, 4);
     r.dims.judgement = Math.min(r.dims.judgement, 4);
     r.notes = (r.notes||[]).concat(["You took a hint on this one, so technical accuracy and judgement are capped at 4. Worth it if it taught you something; expensive if it was impatience."]);
@@ -2513,7 +2934,7 @@ function showHint(){
   const used = S.flow.hintCount || 0;
   S.flow.hintShown = pool[Math.min(used, pool.length-1)];
   S.flow.hintCount = used + 1;
-  S.flow.hintPenalty = true;
+  S.flow.hintPenalty = !coached();
   render();
 }
 
@@ -2539,6 +2960,8 @@ document.addEventListener("click", e => {
   if (act === "submitTask")   { doSubmitTask(); return; }
   if (act === "skipAi")       { if (BUSY) BUSY.ctl.abort(); return; }
   if (act === "hint")         { showHint(); return; }
+  if (act === "hb")           { S.ui.hb = b.dataset.v; render(); return; }
+  if (act === "coach")        { S.settings.coached = b.dataset.v === "1"; render(); saveGame(); return; }
   if (act === "chip") {
     const spec = specForCurrent();
     setAnswer(spec, b.dataset.fid, getAnswer(spec, b.dataset.fid) === b.dataset.v ? "" : b.dataset.v);
@@ -2588,6 +3011,12 @@ document.addEventListener("input", e => {
   if (f === "triageJustify") { S.flow.triageJustify = e.target.value; return; }
   if (f === "ans") { setAnswer(specForCurrent(), e.target.dataset.fid, e.target.value); return; }
 });
+document.addEventListener("toggle", e => {
+  const k = e.target.dataset ? e.target.dataset.keep : null;
+  if (k === "terms")  S.ui.termsOpen  = e.target.open;
+  if (k === "recipe") S.ui.recipeOpen = e.target.open;
+}, true);
+
 document.addEventListener("change", e => {
   const f = e.target.dataset ? e.target.dataset.field : null;
   if (f === "ans") setAnswer(specForCurrent(), e.target.dataset.fid, e.target.value);

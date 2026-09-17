@@ -4,6 +4,8 @@ set -e
 cd "$(dirname "$0")"
 cat src/00-head.html \
     src/10-world.js \
+    src/15-handbook.js \
+    src/17-coach.js \
     src/20-artefacts.js \
     src/22-risk.js \
     src/24-supplier.js \
@@ -12,6 +14,7 @@ cat src/00-head.html \
     src/40-grade.js \
     src/50-engine.js \
     src/60-ui.js \
+    src/62-handbook-ui.js \
     src/70-boot.js \
     src/99-tail.html > /tmp/grc-body.html
 {
