@@ -11,7 +11,7 @@ async function doSubmitTriage(){
   try { r = await gradeTriage(signal); } catch(e){ r = null; }
   endBusy();
   if (!r) { render(); return; }
-  if (r.refused) { LAST_RESULT = r; S.flow.phase = "triageReview"; render(); return; }
+  if (r.refused) { persistResult(r); S.flow.phase = "triageReview"; render(); saveGame(); return; }
   const spec = { skill:"stake", secondary:null, title:"Morning triage", scenarioId:r.spec.scenarioId, id:r.spec.scenarioId };
   r.gained = award(spec, r);
   recordCv(spec, r);
@@ -20,7 +20,7 @@ async function doSubmitTriage(){
   r.nextLabel = "Start work";
   S.flow.triageResult = { dims:r.dims, gained:r.gained };
   S.flow.results.push({ taskId:"triage", title:"Morning triage", dims:r.dims, hits:r.hits, misses:r.misses, integrity:r.integrity });
-  LAST_RESULT = r;
+  persistResult(r);
   S.flow.phase = "triageReview";
   render();
   saveGame();
@@ -34,7 +34,7 @@ async function doSubmitTask(){
   try { r = await gradeWork(spec, answersFor(spec), ctxFor(spec), signal); } catch(e){ r = null; }
   endBusy();
   if (!r) { render(); return; }
-  if (r.refused) { LAST_RESULT = r; S.flow.phase = "taskReview"; render(); return; }
+  if (r.refused) { persistResult(r); S.flow.phase = "taskReview"; render(); saveGame(); return; }
 
   if (S.flow.hintPenalty && !coached()) {
     r.dims.technical = Math.min(r.dims.technical, 4);
@@ -53,7 +53,7 @@ async function doSubmitTask(){
   S.flow.results.push({ taskId:spec.scenarioId, title:spec.title, dims:r.dims, hits:r.hits, misses:r.misses, integrity:r.integrity });
   if (!moreBeats && S.seen.indexOf(spec.scenarioId) < 0) S.seen.push(spec.scenarioId);
   S.flow.hintShown = null; S.flow.hintPenalty = false;
-  LAST_RESULT = r;
+  persistResult(r);
   S.flow.phase = "taskReview";
   render();
   saveGame();
@@ -62,16 +62,16 @@ async function doSubmitTask(){
 function advance(){
   const sc = currentScenario();
   const moreBeats = sc && sc.type === "incident" && S.flow.beatIdx < sc.beats.length - 1;
-  if (moreBeats) { S.flow.beatIdx++; S.flow.hintShown = null; S.flow.hintCount = 0; S.flow.phase = "task"; LAST_RESULT = null; render(); return; }
+  if (moreBeats) { S.flow.beatIdx++; S.flow.hintShown = null; S.flow.hintCount = 0; S.flow.phase = "task"; clearResult(); render(); saveGame(); return; }
   S.flow.beatIdx = 0; S.flow.hintShown = null; S.flow.hintCount = 0;
   if (S.flow.taskIdx < currentPlan().tasks.length - 1) {
-    S.flow.taskIdx++; S.flow.phase = "task"; LAST_RESULT = null; render(); return;
+    S.flow.taskIdx++; S.flow.phase = "task"; clearResult(); render(); saveGame(); return;
   }
   toDebrief();
 }
 
 async function toDebrief(){
-  S.flow.phase = "debrief"; LAST_RESULT = null; render();
+  S.flow.phase = "debrief"; clearResult(); render();
   const d = await buildDebrief();
   S.flow.debrief = d;
   S.dayLog.push({ day:S.day, quarter:S.quarter, results:S.flow.results.map(r=>({title:r.title,dims:r.dims})), debrief:d.text });
@@ -118,9 +118,10 @@ document.addEventListener("click", e => {
     setAnswer(spec, b.dataset.fid, getAnswer(spec, b.dataset.fid) === b.dataset.v ? "" : b.dataset.v);
     render(); return;
   }
-  if (act === "backToWork") { LAST_RESULT = null; S.flow.phase = S.flow.triageResult ? "task" : "triage"; render(); return; }
-  if (act === "continue")   { if (S.flow.phase === "triageReview") { S.flow.phase = "task"; LAST_RESULT = null; render(); } else advance(); return; }
-  if (act === "resume")     { S.ui.view = "day"; render(); return; }
+  if (act === "backToWork") { clearResult(); S.flow.phase = S.flow.triageResult ? "task" : "triage"; render(); return; }
+  if (act === "continue")   { if (S.flow.phase === "triageReview") { S.flow.phase = "task"; clearResult(); render(); saveGame(); } else advance(); return; }
+  if (act === "resume")     { clearResult(); repairFlow(); S.ui.view = "day"; render(); saveGame(); return; }
+  if (act === "recover")    { clearResult(); if (S.flow) repairFlow(); else startDay(); S.ui.view = "day"; render(); saveGame(); return; }
   if (act === "toDebrief")  { toDebrief(); return; }
   if (act === "closeDay")   { S.flow.phase = "dayEnd"; render(); saveGame(); return; }
   if (act === "nextDay")    { S.day += 1; startDay(); S.ui.view = "day"; render(); saveGame(); return; }
@@ -178,7 +179,12 @@ async function start(hot){
   await loadGame();
   if (hot && hot.S) { try { S = migrate(hot.S); } catch(e){} }
   if (!S.flow && (S.cv.length > 0 || S.day > 1)) startDay();
+  if (S.flow && S.flow.lastResult) LAST_RESULT = S.flow.lastResult;
+  if (S.flow) repairFlow();
   render();
+  if (S.flow && S.flow.phase === "debrief" && !S.flow.debrief) {
+    buildDebrief().then(d => { S.flow.debrief = d; render(); saveGame(); });
+  }
   const s = await getSample();
   AI_STATE = s ? "on" : "off";
   render();

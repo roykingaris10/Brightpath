@@ -42,3 +42,17 @@ are always resolved locally and the AI grade cannot overrule them.
 
 Saved to the artifact's `db` where available, mirrored to `localStorage`, and always exportable
 as JSON from **Save & settings**.
+
+## Tests
+
+Browser tests drive the real page with Playwright (Chromium). They need the
+browser available at `/opt/pw-browsers/chromium` or on the default path.
+
+```sh
+node test/render-paths.js     # renders every view, phase, task and beat; flags template errors
+node test/e2e-day.js          # plays a full working day, including a reload mid-review
+node test/e2e-incident.js     # multi-beat incident across reloads
+```
+
+`render-paths.js` runs headless against the built JS with a DOM stub; the other
+two drive `index.html` in a real browser.

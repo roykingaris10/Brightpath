@@ -2142,6 +2142,38 @@ function startDay(){
   };
 }
 
+/* The review screen's result must survive a reload — it lives in the save,
+   stripped of anything that will not round-trip through JSON. */
+function persistResult(r){
+  if (!r) { LAST_RESULT = null; if (S.flow) S.flow.lastResult = null; return null; }
+  const clean = {};
+  Object.keys(r).forEach(k => {
+    if (k === "spec") return;
+    const v = r[k];
+    if (typeof v === "function" || v instanceof RegExp) return;
+    clean[k] = v;
+  });
+  LAST_RESULT = r;
+  if (S.flow) S.flow.lastResult = clean;
+  return r;
+}
+function clearResult(){ LAST_RESULT = null; if (S.flow) S.flow.lastResult = null; }
+
+/* A save restored mid-review, or a phase that cannot render, must never strand
+   the player on a screen with no way forward. */
+function repairFlow(){
+  if (!S.flow) return;
+  const p = S.flow.phase;
+  if (p !== "taskReview" && p !== "triageReview") return;
+  if (LAST_RESULT) return;
+  if (p === "triageReview") { S.flow.phase = "task"; return; }
+  const sc = currentScenario();
+  if (sc && sc.type === "incident" && S.flow.beatIdx < sc.beats.length - 1) { S.flow.beatIdx++; S.flow.phase = "task"; return; }
+  S.flow.beatIdx = 0;
+  if (S.flow.taskIdx < currentPlan().tasks.length - 1) { S.flow.taskIdx++; S.flow.phase = "task"; return; }
+  S.flow.phase = "debrief";
+}
+
 function currentPlan(){ return planForDay(S.flow ? S.flow.planDay : S.day); }
 function currentTaskId(){ const p = currentPlan(); return p.tasks[S.flow.taskIdx]; }
 function currentScenario(){ return ALL_SCENARIOS[currentTaskId()]; }
@@ -2297,7 +2329,20 @@ const app = () => document.getElementById("app");
 function render(){
   const ae = document.activeElement;
   const keep = ae && ae.id ? { id:ae.id, s:ae.selectionStart, e:ae.selectionEnd } : null;
-  app().innerHTML = `<div class="app">${renderRail()}<main class="main"><div class="main-inner">${renderMain()}</div></main></div>`;
+  let body;
+  try { body = renderMain(); }
+  catch (err) {
+    console.error(err);
+    body = `<div class="card pad stack">
+      <div><span class="eyebrow">Something went wrong</span>
+        <h1 style="font-size:21px;margin-top:5px">That screen could not be drawn</h1></div>
+      <p class="muted">Your career is saved and intact. Start the next day, or export your save from Save &amp; settings first.</p>
+      <p class="tiny muted mono">${esc(String(err && err.message || err))}</p>
+      <div class="row"><button class="btn primary" data-act="recover">Back to a working screen</button>
+        <button class="btn ghost" data-act="view" data-v="save">Save &amp; settings</button></div>
+    </div>`;
+  }
+  app().innerHTML = `<div class="app">${renderRail()}<main class="main"><div class="main-inner">${body}</div></main></div>`;
   if (keep) {
     const el = document.getElementById(keep.id);
     if (el) { el.focus(); try { el.setSelectionRange(keep.s, keep.e); } catch(e){} }
@@ -2371,6 +2416,7 @@ function renderMain(){
   if (S.ui.view === "record")   return viewRecord();
   if (S.ui.view === "save")     return viewSave();
   if (!S.flow) return viewOnboard();
+  repairFlow();
   switch (S.flow.phase) {
     case "briefing":     return viewBriefing();
     case "triage":       return viewTriage();
@@ -2540,7 +2586,13 @@ function sevPanel(){
 /* ---------------- review ---------------- */
 function viewReview(kind){
   const r = LAST_RESULT;
-  if (!r) return `<div class="card pad">Nothing to show. <button class="btn" data-act="resume">Continue</button></div>`;
+  if (!r) return `<div class="card pad stack">
+      <div><span class="eyebrow">Picking up where you left off</span>
+        <h1 style="font-size:21px;margin-top:5px">That feedback has already been filed</h1></div>
+      <p class="muted">Your scores and XP were saved. The written feedback for that piece of work is not kept once the day moves on — everything graded is listed under <strong>My record</strong>.</p>
+      <div class="row"><button class="btn primary" data-act="resume">Carry on with the day</button>
+        <button class="btn ghost" data-act="view" data-v="record">See my record</button></div>
+    </div>`;
   if (r.refused) return `<div class="card pad stack">
       <div><span class="eyebrow">Not graded</span><h1 style="font-size:22px;margin-top:5px">${esc(r.reason)}</h1></div>
       <p class="muted">I am not giving you the answer. Here is where to look.</p>
@@ -2860,7 +2912,7 @@ async function doSubmitTriage(){
   try { r = await gradeTriage(signal); } catch(e){ r = null; }
   endBusy();
   if (!r) { render(); return; }
-  if (r.refused) { LAST_RESULT = r; S.flow.phase = "triageReview"; render(); return; }
+  if (r.refused) { persistResult(r); S.flow.phase = "triageReview"; render(); saveGame(); return; }
   const spec = { skill:"stake", secondary:null, title:"Morning triage", scenarioId:r.spec.scenarioId, id:r.spec.scenarioId };
   r.gained = award(spec, r);
   recordCv(spec, r);
@@ -2869,7 +2921,7 @@ async function doSubmitTriage(){
   r.nextLabel = "Start work";
   S.flow.triageResult = { dims:r.dims, gained:r.gained };
   S.flow.results.push({ taskId:"triage", title:"Morning triage", dims:r.dims, hits:r.hits, misses:r.misses, integrity:r.integrity });
-  LAST_RESULT = r;
+  persistResult(r);
   S.flow.phase = "triageReview";
   render();
   saveGame();
@@ -2883,7 +2935,7 @@ async function doSubmitTask(){
   try { r = await gradeWork(spec, answersFor(spec), ctxFor(spec), signal); } catch(e){ r = null; }
   endBusy();
   if (!r) { render(); return; }
-  if (r.refused) { LAST_RESULT = r; S.flow.phase = "taskReview"; render(); return; }
+  if (r.refused) { persistResult(r); S.flow.phase = "taskReview"; render(); saveGame(); return; }
 
   if (S.flow.hintPenalty && !coached()) {
     r.dims.technical = Math.min(r.dims.technical, 4);
@@ -2902,7 +2954,7 @@ async function doSubmitTask(){
   S.flow.results.push({ taskId:spec.scenarioId, title:spec.title, dims:r.dims, hits:r.hits, misses:r.misses, integrity:r.integrity });
   if (!moreBeats && S.seen.indexOf(spec.scenarioId) < 0) S.seen.push(spec.scenarioId);
   S.flow.hintShown = null; S.flow.hintPenalty = false;
-  LAST_RESULT = r;
+  persistResult(r);
   S.flow.phase = "taskReview";
   render();
   saveGame();
@@ -2911,16 +2963,16 @@ async function doSubmitTask(){
 function advance(){
   const sc = currentScenario();
   const moreBeats = sc && sc.type === "incident" && S.flow.beatIdx < sc.beats.length - 1;
-  if (moreBeats) { S.flow.beatIdx++; S.flow.hintShown = null; S.flow.hintCount = 0; S.flow.phase = "task"; LAST_RESULT = null; render(); return; }
+  if (moreBeats) { S.flow.beatIdx++; S.flow.hintShown = null; S.flow.hintCount = 0; S.flow.phase = "task"; clearResult(); render(); saveGame(); return; }
   S.flow.beatIdx = 0; S.flow.hintShown = null; S.flow.hintCount = 0;
   if (S.flow.taskIdx < currentPlan().tasks.length - 1) {
-    S.flow.taskIdx++; S.flow.phase = "task"; LAST_RESULT = null; render(); return;
+    S.flow.taskIdx++; S.flow.phase = "task"; clearResult(); render(); saveGame(); return;
   }
   toDebrief();
 }
 
 async function toDebrief(){
-  S.flow.phase = "debrief"; LAST_RESULT = null; render();
+  S.flow.phase = "debrief"; clearResult(); render();
   const d = await buildDebrief();
   S.flow.debrief = d;
   S.dayLog.push({ day:S.day, quarter:S.quarter, results:S.flow.results.map(r=>({title:r.title,dims:r.dims})), debrief:d.text });
@@ -2967,9 +3019,10 @@ document.addEventListener("click", e => {
     setAnswer(spec, b.dataset.fid, getAnswer(spec, b.dataset.fid) === b.dataset.v ? "" : b.dataset.v);
     render(); return;
   }
-  if (act === "backToWork") { LAST_RESULT = null; S.flow.phase = S.flow.triageResult ? "task" : "triage"; render(); return; }
-  if (act === "continue")   { if (S.flow.phase === "triageReview") { S.flow.phase = "task"; LAST_RESULT = null; render(); } else advance(); return; }
-  if (act === "resume")     { S.ui.view = "day"; render(); return; }
+  if (act === "backToWork") { clearResult(); S.flow.phase = S.flow.triageResult ? "task" : "triage"; render(); return; }
+  if (act === "continue")   { if (S.flow.phase === "triageReview") { S.flow.phase = "task"; clearResult(); render(); saveGame(); } else advance(); return; }
+  if (act === "resume")     { clearResult(); repairFlow(); S.ui.view = "day"; render(); saveGame(); return; }
+  if (act === "recover")    { clearResult(); if (S.flow) repairFlow(); else startDay(); S.ui.view = "day"; render(); saveGame(); return; }
   if (act === "toDebrief")  { toDebrief(); return; }
   if (act === "closeDay")   { S.flow.phase = "dayEnd"; render(); saveGame(); return; }
   if (act === "nextDay")    { S.day += 1; startDay(); S.ui.view = "day"; render(); saveGame(); return; }
@@ -3027,7 +3080,12 @@ async function start(hot){
   await loadGame();
   if (hot && hot.S) { try { S = migrate(hot.S); } catch(e){} }
   if (!S.flow && (S.cv.length > 0 || S.day > 1)) startDay();
+  if (S.flow && S.flow.lastResult) LAST_RESULT = S.flow.lastResult;
+  if (S.flow) repairFlow();
   render();
+  if (S.flow && S.flow.phase === "debrief" && !S.flow.debrief) {
+    buildDebrief().then(d => { S.flow.debrief = d; render(); saveGame(); });
+  }
   const s = await getSample();
   AI_STATE = s ? "on" : "off";
   render();

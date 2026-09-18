@@ -10,7 +10,20 @@ const app = () => document.getElementById("app");
 function render(){
   const ae = document.activeElement;
   const keep = ae && ae.id ? { id:ae.id, s:ae.selectionStart, e:ae.selectionEnd } : null;
-  app().innerHTML = `<div class="app">${renderRail()}<main class="main"><div class="main-inner">${renderMain()}</div></main></div>`;
+  let body;
+  try { body = renderMain(); }
+  catch (err) {
+    console.error(err);
+    body = `<div class="card pad stack">
+      <div><span class="eyebrow">Something went wrong</span>
+        <h1 style="font-size:21px;margin-top:5px">That screen could not be drawn</h1></div>
+      <p class="muted">Your career is saved and intact. Start the next day, or export your save from Save &amp; settings first.</p>
+      <p class="tiny muted mono">${esc(String(err && err.message || err))}</p>
+      <div class="row"><button class="btn primary" data-act="recover">Back to a working screen</button>
+        <button class="btn ghost" data-act="view" data-v="save">Save &amp; settings</button></div>
+    </div>`;
+  }
+  app().innerHTML = `<div class="app">${renderRail()}<main class="main"><div class="main-inner">${body}</div></main></div>`;
   if (keep) {
     const el = document.getElementById(keep.id);
     if (el) { el.focus(); try { el.setSelectionRange(keep.s, keep.e); } catch(e){} }
@@ -84,6 +97,7 @@ function renderMain(){
   if (S.ui.view === "record")   return viewRecord();
   if (S.ui.view === "save")     return viewSave();
   if (!S.flow) return viewOnboard();
+  repairFlow();
   switch (S.flow.phase) {
     case "briefing":     return viewBriefing();
     case "triage":       return viewTriage();
@@ -253,7 +267,13 @@ function sevPanel(){
 /* ---------------- review ---------------- */
 function viewReview(kind){
   const r = LAST_RESULT;
-  if (!r) return `<div class="card pad">Nothing to show. <button class="btn" data-act="resume">Continue</button></div>`;
+  if (!r) return `<div class="card pad stack">
+      <div><span class="eyebrow">Picking up where you left off</span>
+        <h1 style="font-size:21px;margin-top:5px">That feedback has already been filed</h1></div>
+      <p class="muted">Your scores and XP were saved. The written feedback for that piece of work is not kept once the day moves on — everything graded is listed under <strong>My record</strong>.</p>
+      <div class="row"><button class="btn primary" data-act="resume">Carry on with the day</button>
+        <button class="btn ghost" data-act="view" data-v="record">See my record</button></div>
+    </div>`;
   if (r.refused) return `<div class="card pad stack">
       <div><span class="eyebrow">Not graded</span><h1 style="font-size:22px;margin-top:5px">${esc(r.reason)}</h1></div>
       <p class="muted">I am not giving you the answer. Here is where to look.</p>

@@ -125,6 +125,38 @@ function startDay(){
   };
 }
 
+/* The review screen's result must survive a reload — it lives in the save,
+   stripped of anything that will not round-trip through JSON. */
+function persistResult(r){
+  if (!r) { LAST_RESULT = null; if (S.flow) S.flow.lastResult = null; return null; }
+  const clean = {};
+  Object.keys(r).forEach(k => {
+    if (k === "spec") return;
+    const v = r[k];
+    if (typeof v === "function" || v instanceof RegExp) return;
+    clean[k] = v;
+  });
+  LAST_RESULT = r;
+  if (S.flow) S.flow.lastResult = clean;
+  return r;
+}
+function clearResult(){ LAST_RESULT = null; if (S.flow) S.flow.lastResult = null; }
+
+/* A save restored mid-review, or a phase that cannot render, must never strand
+   the player on a screen with no way forward. */
+function repairFlow(){
+  if (!S.flow) return;
+  const p = S.flow.phase;
+  if (p !== "taskReview" && p !== "triageReview") return;
+  if (LAST_RESULT) return;
+  if (p === "triageReview") { S.flow.phase = "task"; return; }
+  const sc = currentScenario();
+  if (sc && sc.type === "incident" && S.flow.beatIdx < sc.beats.length - 1) { S.flow.beatIdx++; S.flow.phase = "task"; return; }
+  S.flow.beatIdx = 0;
+  if (S.flow.taskIdx < currentPlan().tasks.length - 1) { S.flow.taskIdx++; S.flow.phase = "task"; return; }
+  S.flow.phase = "debrief";
+}
+
 function currentPlan(){ return planForDay(S.flow ? S.flow.planDay : S.day); }
 function currentTaskId(){ const p = currentPlan(); return p.tasks[S.flow.taskIdx]; }
 function currentScenario(){ return ALL_SCENARIOS[currentTaskId()]; }

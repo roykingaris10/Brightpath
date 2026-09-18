@@ -1,0 +1,22 @@
+const {chromium}=require('playwright');
+(async()=>{
+  const b=await chromium.launch({executablePath:'/opt/pw-browsers/chromium'}).catch(()=>chromium.launch());
+  const p=await (await b.newContext()).newPage();
+  const errs=[]; p.on('pageerror',e=>errs.push(e.message));
+  const show=async l=>{await p.waitForTimeout(200);console.log(l.padEnd(26),'→',(await p.textContent('.main')).replace(/\s+/g,' ').slice(0,66).trim())};
+  await p.goto('file:///home/user/Brightpath/index.html'); await p.waitForTimeout(700);
+  await p.evaluate(()=>{ S=newGame("Alex"); startDay(); S.day=2; S.flow.planDay=2; S.flow.phase="task"; S.flow.taskIdx=0; S.flow.beatIdx=0; S.flow.triageResult={dims:{}}; S.ui.view="day"; render(); saveGame(); });
+  await show('incident beat 1');
+  const fill=async(fid,txt)=>{const el=await p.$(`textarea[data-fid="${fid}"]`); if(el) await el.fill(txt);};
+  await p.selectOption('select[data-fid="sev"]','P2 — High');
+  await fill('actions',"Stop the mail merge immediately, nothing else goes out. Bex deletes nothing — the merge workbook, sent items, Sanjay's returned attachment and the timestamps are the evidence. Reply to Sanjay asking him to delete it and confirm in writing and not to forward it. Ring Priya, then Tom. Start a timeline with real times now because awareness clocks start from when we knew.");
+  await fill('questions',"To Bex and the mail log: exactly which schools received which file from send 9 onwards. To Rob: does this export exist anywhere else, a Drive folder or an automated copy. To Ellie: what is actually in pastoral_notes across the whole export, not just the entry Bex read.");
+  await p.click('[data-act="submitTask"]'); await show('beat 1 marked');
+  await p.reload(); await p.waitForTimeout(800); await show('RELOAD on beat 1 review');
+  await p.click('[data-act="continue"]'); await show('beat 2');
+  const st=await p.evaluate(()=>({beat:S.flow.beatIdx,task:S.flow.taskIdx,phase:S.flow.phase}));
+  console.log('  >> flow state:',JSON.stringify(st));
+  await p.reload(); await p.waitForTimeout(800); await show('RELOAD on beat 2 form');
+  console.log('page errors:',errs.length?errs:'none');
+  await b.close();
+})();
